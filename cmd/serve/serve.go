@@ -1,15 +1,15 @@
 package main
 
 import (
-	"strings"
-	"errors"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -71,14 +71,14 @@ func handleFuncWithDb(path string, fn func(http.ResponseWriter, *http.Request, *
 
 func handleFuncAuthenticated(path string, fn func(http.ResponseWriter, *http.Request, *sql.DB, ImpactUserID), db *sql.DB) {
 	handleFuncWithPanicRecovery(path, func(w http.ResponseWriter, r *http.Request) {
-		userId, err := authenticate(r, db)
+		userID, err := authenticate(r, db)
 		if err == ErrSessionInvalid {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		} else if err != nil {
 			fmt.Println("error authenticating: ", err)
 			http.Error(w, "Server Error", http.StatusInternalServerError)
-		} else{
-			generateReport(w, r, db, userId)
+		} else {
+			generateReport(w, r, db, userID)
 		}
 	})
 }
@@ -87,7 +87,7 @@ type ImpactUserID int
 
 var ErrSessionInvalid = errors.New("session invalid")
 
-func authenticate(r *http.Request, db *sql.DB) (ImpactUserID, error)  {
+func authenticate(r *http.Request, db *sql.DB) (ImpactUserID, error) {
 	tokens, ok := r.Header["Authorization"]
 	if !ok || len(tokens) != 1 {
 		return 0, errors.New("no authorization header")
@@ -117,4 +117,3 @@ func authenticate(r *http.Request, db *sql.DB) (ImpactUserID, error)  {
 func generateReport(w http.ResponseWriter, r *http.Request, db *sql.DB, id ImpactUserID) {
 	fmt.Fprintf(w, "Hello %v", id)
 }
-
