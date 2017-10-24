@@ -26,13 +26,7 @@ func handleFuncWithPanicRecovery(path string, fn func(http.ResponseWriter, *http
 	})
 }
 
-func handleFuncWithDb(path string, fn func(http.ResponseWriter, *http.Request, *sql.DB), db *sql.DB) {
-	handleFuncWithPanicRecovery(path, func(w http.ResponseWriter, r *http.Request) {
-		fn(w, r, db)
-	})
-}
-
-func handleFuncAuthenticated(path string, fn func(http.ResponseWriter, *http.Request, *sql.DB, auth.ImpactUserID), db *sql.DB) {
+func handleFuncAuthenticated(path string, fn func(http.ResponseWriter, *http.Request, *sql.DB, auth.UserID), db *sql.DB) {
 	handleFuncWithPanicRecovery(path, func(w http.ResponseWriter, r *http.Request) {
 		userID, err := auth.Validate(r, db)
 		if err == auth.ErrSessionInvalid {

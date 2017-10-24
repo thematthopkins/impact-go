@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-
 	phpURLStr := "https://api.impact.dev"
 	phpURL, err := url.Parse(phpURLStr)
 	if err != nil {
