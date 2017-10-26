@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+
 func Setup() *sql.DB {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	db, err := sql.Open("postgres", databaseURL)

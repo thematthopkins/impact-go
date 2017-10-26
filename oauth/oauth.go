@@ -22,6 +22,7 @@ func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 		return 0, errors.New("no authorization header")
 	}
 	token := strings.TrimPrefix(tokens[0], "Bearer ")
+	now := time.Now().Unix()
 	var userID UserID
 	err := db.QueryRow(`
 		select
@@ -31,8 +32,8 @@ func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 			join oauth_sessions on oauth_access_tokens.session_id = oauth_sessions.id
 		where
 			oauth_access_tokens.id = $1
-			and oauth_access_tokens.expire_time > EXTRACT(EPOCH FROM now())
-		`, token).Scan(&userID)
+			and oauth_access_tokens.expire_time > $2
+		`, token, now).Scan(&userID)
 
 	if err == sql.ErrNoRows {
 		return 0, errors.Wrapf(ErrSessionInvalid, token)
