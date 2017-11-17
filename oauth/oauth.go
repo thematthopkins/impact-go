@@ -15,11 +15,13 @@ type UserID int
 // ErrSessionInvalid failure to authenticate user
 var ErrSessionInvalid = errors.New("session invalid")
 
+var ErrNoAuthHeader = errors.New("no authorization header")
+
 // Validate user based on http Authorization: Bearer *** token
 func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 	tokens, ok := r.Header["Authorization"]
 	if !ok || len(tokens) != 1 {
-		return 0, errors.New("no authorization header")
+		return 0, ErrNoAuthHeader
 	}
 	token := strings.TrimPrefix(tokens[0], "Bearer ")
 	now := time.Now().Unix()
@@ -38,10 +40,10 @@ func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 	if err == sql.ErrNoRows {
 		return 0, errors.Wrapf(ErrSessionInvalid, token)
 	} else if err != nil {
-		return 0, err
-	} else {
-		return userID, nil
+		panic(err)
 	}
+
+	return userID, nil
 }
 
 type ClientName string
@@ -52,8 +54,10 @@ func AddSession(db *sql.DB, oauthClientName ClientName, userID UserID) (SessionI
 	err := db.QueryRow(`
 		select id from oauth_clients where name = $1
 	`, oauthClientName).Scan(&clientID)
-	if err != nil {
+	if err == sql.ErrNoRows {
 		return 0, errors.Wrapf(err, "failed to find oauth client", oauthClientName)
+	} else if err != nil {
+		panic(err)
 	}
 
 	var sessionID SessionID
@@ -63,7 +67,7 @@ func AddSession(db *sql.DB, oauthClientName ClientName, userID UserID) (SessionI
 	`, clientID, userID).Scan(&sessionID)
 
 	if err != nil {
-		return 0, errors.Wrap(err, "insert session failed")
+		panic(err)
 	}
 	return sessionID, nil
 }
@@ -87,7 +91,7 @@ func AddSessionToken(db *sql.DB, sessionID SessionID, accessTokenExpiration time
 		insert into oauth_access_tokens(id, session_id, expire_time, created_at, updated_at) values($1, $2, $3, now(), now())
 	`, accessToken.Token, sessionID, accessTokenExpiration.Unix())
 	if err != nil {
-		return AccessToken{}, RefreshToken{}, errors.Wrap(err, "insert oauth token failed")
+		panic(err)
 	}
 
 	refreshToken := RefreshToken{
@@ -98,7 +102,7 @@ func AddSessionToken(db *sql.DB, sessionID SessionID, accessTokenExpiration time
 		insert into oauth_refresh_tokens(id, access_token_id, expire_time, created_at, updated_at) values($1, $2, $3, now(), now())
 	`, refreshToken.Token, accessToken.Token, refreshTokenExpiration.Unix())
 	if err != nil {
-		return AccessToken{}, RefreshToken{}, errors.Wrap(err, "insert refresh token failed")
+		panic(err)
 	}
 
 	return accessToken, refreshToken, nil

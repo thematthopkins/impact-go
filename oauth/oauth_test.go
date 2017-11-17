@@ -59,5 +59,12 @@ func TestInvalid(t *testing.T) {
 	var request = httptest.NewRequest("GET", "/", nil)
 	request.Header.Add("Authorization", "Bearer invalidToken")
 	_, err := oauth.Validate(request, db)
-	assert.True(t, errors.Cause(err) == oauth.ErrSessionInvalid, "err: ", err)
+	assert.EqualError(t, errors.Cause(err), oauth.ErrSessionInvalid.Error())
+}
+
+func TestMissingAuthHeader(t *testing.T) {
+	db := testdb.Setup()
+	var request = httptest.NewRequest("GET", "/", nil)
+	_, err := oauth.Validate(request, db)
+	assert.EqualError(t, errors.Cause(err), oauth.ErrNoAuthHeader.Error())
 }
