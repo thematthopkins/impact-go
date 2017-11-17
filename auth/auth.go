@@ -15,12 +15,13 @@ type UserID int
 // ErrSessionInvalid failure to authenticate user
 var ErrSessionInvalid = errors.New("session invalid")
 
+// ErrNoAuthHeader indicates the HTTP Authorization header is missing
 var ErrNoAuthHeader = errors.New("no authorization header")
 
 // Validate user based on http Authorization: Bearer *** token
 func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 	tokens, ok := r.Header["Authorization"]
-	if !ok || len(tokens) != 1 {
+	if !ok {
 		return 0, ErrNoAuthHeader
 	}
 	token := strings.TrimPrefix(tokens[0], "Bearer ")
@@ -46,16 +47,20 @@ func Validate(r *http.Request, db *sql.DB) (UserID, error) {
 	return userID, nil
 }
 
+// ClientName represents oauth_clients.name entry in the db
 type ClientName string
+
+// SessionID is the id of the session
 type SessionID int64
 
+// AddSession creates a new oauth session for ClientName
 func AddSession(db *sql.DB, oauthClientName ClientName, userID UserID) (SessionID, error) {
 	var clientID string
 	err := db.QueryRow(`
 		select id from oauth_clients where name = $1
 	`, oauthClientName).Scan(&clientID)
 	if err == sql.ErrNoRows {
-		return 0, errors.Wrapf(err, "failed to find oauth client", oauthClientName)
+		return 0, errors.Errorf("failed to find oauth client: %s", oauthClientName)
 	} else if err != nil {
 		panic(err)
 	}
@@ -72,16 +77,20 @@ func AddSession(db *sql.DB, oauthClientName ClientName, userID UserID) (SessionI
 	return sessionID, nil
 }
 
+
+// AccessToken is associated with a SessionID and gets supplied in the Authorization http header for authentication
 type AccessToken struct {
 	Token      string
 	Expiration time.Time
 }
 
+// RefreshToken enables retrieval of a new AccessToken
 type RefreshToken struct {
 	Token      string
 	Expiration time.Time
 }
 
+// AddSessionToken adds a new AccessToken and RefreshToken associated with the SessionID
 func AddSessionToken(db *sql.DB, sessionID SessionID, accessTokenExpiration time.Time, refreshTokenExpiration time.Time) (AccessToken, RefreshToken, error) {
 	accessToken := AccessToken{
 		Token:      uuid.New().String(),
