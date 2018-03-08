@@ -4,92 +4,91 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thematthopkins/impact-go/contingency"
 )
 
 func TestNoContingency(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{},
+	enabled := Enable(
+		Responses{},
+		AnswerDependencies{},
+		AnswerDependencies{},
+		[]QuestionSfid{},
 	)
 
 	assert.True(t, enabled)
 }
 
 func TestDisablingAnswerValueNotMatched(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
-				Answers: map[contingency.AnswerValueSfid]struct{}{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
+				Answers: map[AnswerValueSfid]struct{}{
 					"nonMatching": struct{}{},
 				},
 			},
 		},
-		contingency.AnswerDependencies{
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{},
+		AnswerDependencies{},
+		[]QuestionSfid{},
 	)
 	assert.True(t, enabled)
 }
 
 func TestDisablingAnswerValueMatched(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
-				Answers: map[contingency.AnswerValueSfid]struct{}{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
+				Answers: map[AnswerValueSfid]struct{}{
 					"masterV": struct{}{},
 				},
 			},
 		},
-		contingency.AnswerDependencies{
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{},
+		AnswerDependencies{},
+		[]QuestionSfid{},
 	)
 	assert.False(t, enabled)
 }
 
 func TestEnablingAnswerValueNotMatched(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{
+	enabled := Enable(
+		Responses{},
+		AnswerDependencies{},
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		[]contingency.QuestionSfid{},
+		[]QuestionSfid{},
 	)
 	assert.False(t, enabled)
 }
 
 func TestEnablingAnswerValueMatched(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
-				Answers: map[contingency.AnswerValueSfid]struct{}{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
+				Answers: map[AnswerValueSfid]struct{}{
 					"masterV": struct{}{},
 				},
 			},
 		},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{
+		AnswerDependencies{},
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		[]contingency.QuestionSfid{},
+		[]QuestionSfid{},
 	)
 	assert.True(t, enabled)
 }
 
 func TestEnablingQuestionUnmet(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{
+	enabled := Enable(
+		Responses{},
+		AnswerDependencies{},
+		AnswerDependencies{},
+		[]QuestionSfid{
 			"masterQ",
 			"masterQ2",
 		},
@@ -98,15 +97,15 @@ func TestEnablingQuestionUnmet(t *testing.T) {
 }
 
 func TestEnablingQuestionUnmetPercentage(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
 				ValuePercentage: 80,
 			},
 		},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{
+		AnswerDependencies{},
+		AnswerDependencies{},
+		[]QuestionSfid{
 			"masterQ",
 			"masterQ2",
 		},
@@ -115,15 +114,15 @@ func TestEnablingQuestionUnmetPercentage(t *testing.T) {
 }
 
 func TestEnablingQuestionMetPercentage(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
 				ValuePercentage: 100,
 			},
 		},
-		contingency.AnswerDependencies{},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{
+		AnswerDependencies{},
+		AnswerDependencies{},
+		[]QuestionSfid{
 			"masterQ",
 			"masterQ2",
 		},
@@ -132,40 +131,40 @@ func TestEnablingQuestionMetPercentage(t *testing.T) {
 }
 
 func TestDisableOverridesEnable(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
-				Answers: map[contingency.AnswerValueSfid]struct{}{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
+				Answers: map[AnswerValueSfid]struct{}{
 					"masterV": struct{}{},
 				},
 			},
 		},
-		contingency.AnswerDependencies{
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		contingency.AnswerDependencies{
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		[]contingency.QuestionSfid{},
+		[]QuestionSfid{},
 	)
 	assert.False(t, enabled)
 }
 
 func TestDisableOverridesEnableByValuePercentage(t *testing.T) {
-	enabled := contingency.Enable(
-		contingency.Responses{
-			"masterQ": contingency.Response{
+	enabled := Enable(
+		Responses{
+			"masterQ": Response{
 				ValuePercentage: 100,
-				Answers: map[contingency.AnswerValueSfid]struct{}{
+				Answers: map[AnswerValueSfid]struct{}{
 					"masterV": struct{}{},
 				},
 			},
 		},
-		contingency.AnswerDependencies{
+		AnswerDependencies{
 			"masterQ": "masterV",
 		},
-		contingency.AnswerDependencies{},
-		[]contingency.QuestionSfid{
+		AnswerDependencies{},
+		[]QuestionSfid{
 			"masterQ",
 			"masterQ2",
 		},
@@ -174,33 +173,33 @@ func TestDisableOverridesEnableByValuePercentage(t *testing.T) {
 }
 
 func TestFromGoalDisableByAnswerValue(t *testing.T) {
-	q1 := contingency.QuestionSfid("q1")
-	a1 := contingency.AnswerValueSfid("a1")
-	result := contingency.FromGoal(
+	q1 := QuestionSfid("q1")
+	a1 := AnswerValueSfid("a1")
+	result := FromGoal(
 		&q1,
 		&a1,
-		[]contingency.QuestionSfid{
+		[]QuestionSfid{
 			"goalq1",
 			"goalq2",
 		},
-		contingency.AnswerValueDisables,
+		AnswerValueDisables,
 	)
 
 	assert.Equal(t,
-		map[contingency.QuestionSfid]contingency.QuestionDependencies{
-			"goalq1": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{
+		map[QuestionSfid]QuestionDependencies{
+			"goalq1": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{
 					"q1": "a1",
 				},
-				EnablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingQuestions:    []contingency.QuestionSfid{},
+				EnablingAnswerValues: AnswerDependencies{},
+				EnablingQuestions:    []QuestionSfid{},
 			},
-			"goalq2": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{
+			"goalq2": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{
 					"q1": "a1",
 				},
-				EnablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingQuestions:    []contingency.QuestionSfid{},
+				EnablingAnswerValues: AnswerDependencies{},
+				EnablingQuestions:    []QuestionSfid{},
 			},
 		},
 		result,
@@ -208,33 +207,33 @@ func TestFromGoalDisableByAnswerValue(t *testing.T) {
 }
 
 func TestFromGoalEnabledByAnswerValue(t *testing.T) {
-	q1 := contingency.QuestionSfid("q1")
-	a1 := contingency.AnswerValueSfid("a1")
-	result := contingency.FromGoal(
+	q1 := QuestionSfid("q1")
+	a1 := AnswerValueSfid("a1")
+	result := FromGoal(
 		&q1,
 		&a1,
-		[]contingency.QuestionSfid{
+		[]QuestionSfid{
 			"goalq1",
 			"goalq2",
 		},
-		contingency.AnswerValueEnables,
+		AnswerValueEnables,
 	)
 
 	assert.Equal(t,
-		map[contingency.QuestionSfid]contingency.QuestionDependencies{
-			"goalq1": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues: contingency.AnswerDependencies{
+		map[QuestionSfid]QuestionDependencies{
+			"goalq1": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues: AnswerDependencies{
 					"q1": "a1",
 				},
-				EnablingQuestions: []contingency.QuestionSfid{},
+				EnablingQuestions: []QuestionSfid{},
 			},
-			"goalq2": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues: contingency.AnswerDependencies{
+			"goalq2": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues: AnswerDependencies{
 					"q1": "a1",
 				},
-				EnablingQuestions: []contingency.QuestionSfid{},
+				EnablingQuestions: []QuestionSfid{},
 			},
 		},
 		result,
@@ -242,27 +241,27 @@ func TestFromGoalEnabledByAnswerValue(t *testing.T) {
 }
 
 func TestFromGoalWithNoMasterQ(t *testing.T) {
-	result := contingency.FromGoal(
+	result := FromGoal(
 		nil,
 		nil,
-		[]contingency.QuestionSfid{
+		[]QuestionSfid{
 			"goalq1",
 			"goalq2",
 		},
-		contingency.AnswerValueEnables,
+		AnswerValueEnables,
 	)
 
 	assert.Equal(t,
-		map[contingency.QuestionSfid]contingency.QuestionDependencies{
-			"goalq1": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues:  contingency.AnswerDependencies{},
-				EnablingQuestions:     []contingency.QuestionSfid{},
+		map[QuestionSfid]QuestionDependencies{
+			"goalq1": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues:  AnswerDependencies{},
+				EnablingQuestions:     []QuestionSfid{},
 			},
-			"goalq2": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues:  contingency.AnswerDependencies{},
-				EnablingQuestions:     []contingency.QuestionSfid{},
+			"goalq2": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues:  AnswerDependencies{},
+				EnablingQuestions:     []QuestionSfid{},
 			},
 		},
 		result,
@@ -271,27 +270,27 @@ func TestFromGoalWithNoMasterQ(t *testing.T) {
 }
 
 func TestFromGoalWithNoMasterQ_Disabled(t *testing.T) {
-	result := contingency.FromGoal(
+	result := FromGoal(
 		nil,
 		nil,
-		[]contingency.QuestionSfid{
+		[]QuestionSfid{
 			"goalq1",
 			"goalq2",
 		},
-		contingency.AnswerValueDisables,
+		AnswerValueDisables,
 	)
 
 	assert.Equal(t,
-		map[contingency.QuestionSfid]contingency.QuestionDependencies{
-			"goalq1": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues:  contingency.AnswerDependencies{},
-				EnablingQuestions:     []contingency.QuestionSfid{},
+		map[QuestionSfid]QuestionDependencies{
+			"goalq1": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues:  AnswerDependencies{},
+				EnablingQuestions:     []QuestionSfid{},
 			},
-			"goalq2": contingency.QuestionDependencies{
-				DisablingAnswerValues: contingency.AnswerDependencies{},
-				EnablingAnswerValues:  contingency.AnswerDependencies{},
-				EnablingQuestions:     []contingency.QuestionSfid{},
+			"goalq2": QuestionDependencies{
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingAnswerValues:  AnswerDependencies{},
+				EnablingQuestions:     []QuestionSfid{},
 			},
 		},
 		result,
