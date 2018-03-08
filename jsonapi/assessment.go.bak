@@ -1,0 +1,246 @@
+package jsonapi
+
+// Assessment stored
+type Assessment struct {
+	Sfid                       string `json:"sfid"`
+	StartDate                  string `json:"startDate"`
+	EndDate                    string `json:"endDate"`
+	Created                    string `json:"created"`
+	Year                       string `json:"year"`
+	Version                    string `json:"version"`
+	Market                     string `json:"market"`
+	Sector                     string `json:"sector"`
+	Size                       string `json:"size"`
+	SubmitForReviewDate        string `json:"submitForReviewDate"`
+	RevisitCount               string `json:"revisitCount"`
+	ImproveCount               string `json:"improveCount"`
+	RequiresProofCount         string `json:"requiresProofCount"`
+	RequiresProofProgressCount string `json:"requiresProofProgressCount"`
+	RequiresDiscussionCount    string `json:"requiresDiscussionCount"`
+	Status                     string `json:"status"`
+	Supported                  string `json:"supported"`
+	Completion                 string `json:"completion"`
+	Score                      string `json:"score"`
+	Use                        string `json:"use"`
+	PipelineStep               string `json:"pipelineStep"`
+	PipelineStatus             string `json:"pipelineStatus"`
+	PipelineSequence           string `json:"pipelineSequence"`
+	AssessmentType             string `json:"assessmentType"`
+	HasFullImpact              string `json:"hasFullImpact"`
+	PortYear                   string `json:"portYear"`
+	Locked                     string `json:"locked"`
+	RequiresRefresh            string `json:"requiresRefresh"`
+	CanSubmit                  string `json:"canSubmit"`
+	MeetsDisclosureThreshold   string `json:"meetsDisclosureThreshold"`
+	IsActive                   string `json:"isActive"`
+	PdfCreated                 string `json:"pdfCreated"`
+	Permissions                string `json:"permissions"`
+}
+
+/*
+{
+    "data": {
+        "type": "user",
+        "id": "3",
+        "attributes": {
+            "firstName": "Matt",
+            "lastName": "Hopkins",
+            "email": "mhopkins@bcorporation.net",
+            "locale": "en-us",
+            "destination": "dashboard",
+            "userType": "contact",
+            "accountId": 1,
+            "jobTitle": null,
+            "lastActive": "2017-11-18T02:59:35+00:00",
+            "status": "active",
+            "requiresActivation": false
+        },
+        "relationships": {
+            "lead": {
+                "data": null
+            },
+            "account": {
+                "data": {
+                    "type": "account",
+                    "id": "1"
+                }
+            },
+            "notifications": {
+                "data": [
+                    {
+                        "type": "notification",
+                        "id": "1"
+                    }
+                ]
+            },
+            "settings": {
+                "data": []
+            },
+            "requests": {
+                "data": [
+                    {
+                        "type": "requests",
+                        "id": "1"
+                    }
+                ]
+            },
+            "program": {
+                "data": {
+                    "type": "partner",
+                    "id": "base-kc"
+                }
+            },
+            "referrer": {
+                "data": null
+            },
+            "languages": {
+                "data": [
+                    {
+                        "type": "language",
+                        "id": "1"
+                    }
+                ]
+            }
+        },
+        "links": {
+            "self": "https:\/\/api.impact.dev\/user\/3"
+        }
+    },
+    "included": [
+        {
+            "type": "account",
+            "id": "1",
+            "attributes": {
+                "name": "asf",
+                "website": null,
+                "numFullTimeEmployees": null,
+                "numWorkerOwners": null,
+                "numPartTimeEmployees": null,
+                "numTempEmployees": null,
+                "dateFounded": null,
+                "ownershipType": null,
+                "countryOfIncorporation": null,
+                "stateOfIncorporation": null,
+                "shippingStreet": null,
+                "shippingCity": null,
+                "shippingCountry": "United States",
+                "shippingProvince": "Pennsylvania",
+                "shippingPostalCode": null,
+                "phone": null,
+                "otherCountriesOfOperations": null,
+                "countriesOfSales": null,
+                "shortDescription": null,
+                "mission": null,
+                "interestedInCertification": false,
+                "interestedInBenefitCorp": false,
+                "interestedInGiirsRating": false,
+                "completion": 20,
+                "appVersion": null,
+                "globalPartner": null,
+                "submissionReason": null,
+                "preferredLanguages": null,
+                "corporateStructure": null,
+                "sfid": null,
+                "certificationOwner": null,
+                "certificationStatus": "Engaged: Logged Onto Website",
+                "certificationDate": null,
+                "assessmentType": null,
+                "annualRevenue": "$0.00",
+                "legalRequirement": null,
+                "market": "Developed",
+                "sector": "Manufacturing",
+                "size": "0",
+                "industryCategory": "Agriculture, forestry & fishing",
+                "industry": "Agricultural Processing",
+                "lastActive": "2017-11-18T02:59:35+00:00",
+                "reviewTeamMember": null,
+                "currentCertifiedScore": null,
+                "publicProfilePublished": false,
+                "directoryIndustryCategory": null,
+                "directoryIndustry": null,
+                "directoryProductsServices": null,
+                "directoryBlurb": null,
+                "directoryWhyB": null,
+                "directoryTerms": null,
+                "directoryLogoUrl": null,
+                "directoryLastSavedDate": null,
+                "directoryLastSavedBy": null,
+                "consumerProductCompany": null,
+                "productsServicesKeywords": null,
+                "eCommerceUrl": null,
+                "womenOwned": null,
+                "minorityOwned": null,
+                "lgbtqOwned": null,
+                "affiliationsCertifications": null,
+                "primaryCustomerTarget": null,
+                "giirsRated": false,
+                "primaryContactName": "Matt Hopkins",
+                "primaryContactEmail": "mhopkins@bcorporation.net",
+                "supported": true
+            },
+            "relationships": {
+                "account-access": {
+                    "data": [
+                        {
+                            "type": "account-access",
+                            "id": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "notification",
+            "id": "1",
+            "attributes": {
+                "created": "2017-11-18 02:59:35",
+                "updated": "2017-11-18 02:59:35",
+                "notificationType": "last-seen",
+                "message": "quick-impact-assessment-balle",
+                "content": "assess\/quick-impact-assessment-balle\/instructions-balle"
+            }
+        },
+        {
+            "type": "requests",
+            "id": "1",
+            "attributes": {
+                "name": "BASE - KC",
+                "dateRequested": "2017-11-18T02:59:35+00:00",
+                "status": "validated"
+            }
+        },
+        {
+            "type": "partner",
+            "id": "base-kc",
+            "attributes": {
+                "sfid": "a0IC000000LJfuWMAT",
+                "name": "BASE - KC",
+                "welcomeMessage": "You are registering on behalf of BASE - KC.",
+                "isChild": false
+            },
+            "relationships": {
+                "languages": {
+                    "data": [
+                        {
+                            "type": "language",
+                            "id": "1"
+                        }
+                    ]
+                },
+                "partners": {
+                    "data": []
+                }
+            }
+        },
+        {
+            "type": "language",
+            "id": "1",
+            "attributes": {
+                "code": "en-us",
+                "label": "English",
+                "value": "English"
+            }
+        }
+    ]
+}
+*/
