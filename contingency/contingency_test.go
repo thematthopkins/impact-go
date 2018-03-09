@@ -529,6 +529,60 @@ func TestExpand_enablingQuestionTwoLevels(t *testing.T) {
 	)
 }
 
+func TextExpandMixedTypes(t *testing.T) {
+	result, err := expand(map[QuestionSfid]questionDependencies{
+		"q1": questionDependencies{
+			EnablingAnswerValues: AnswerDependencies{
+				"q0": "aq0",
+			},
+		},
+		"q2": questionDependencies{
+			DisablingAnswerValues: AnswerDependencies{
+				"q1": "aq1",
+			},
+		},
+		"q3": questionDependencies{
+			EnablingQuestions: map[QuestionSfid]struct{}{
+				"q2": struct{}{},
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t,
+		map[QuestionSfid]questionDependencies{
+			"q1": questionDependencies{
+				EnablingAnswerValues: AnswerDependencies{
+					"q0": "aq0",
+				},
+				DisablingAnswerValues: AnswerDependencies{},
+				EnablingQuestions:     map[QuestionSfid]struct{}{},
+			},
+			"q2": questionDependencies{
+				EnablingAnswerValues: AnswerDependencies{
+					"q0": "aq0",
+				},
+				DisablingAnswerValues: AnswerDependencies{
+					"q1": "aq1",
+				},
+				EnablingQuestions: map[QuestionSfid]struct{}{},
+			},
+			"q3": questionDependencies{
+				EnablingAnswerValues: AnswerDependencies{
+					"q0": "aq0",
+				},
+				DisablingAnswerValues: AnswerDependencies{
+					"q1": "aq1",
+				},
+				EnablingQuestions: map[QuestionSfid]struct{}{
+					"q2": struct{}{},
+				},
+			},
+		},
+		result,
+	)
+}
+
 func TestExpand_enablingQuestionCircular(t *testing.T) {
 	_, err := expand(map[QuestionSfid]questionDependencies{
 		"q1": questionDependencies{
