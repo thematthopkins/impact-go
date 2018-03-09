@@ -1,5 +1,7 @@
 package contingency
 
+import "github.com/pkg/errors"
+
 //QuestionSfid Salesforce Id
 type QuestionSfid string
 
@@ -18,44 +20,124 @@ type Responses map[QuestionSfid]Response
 //AnswerDependencies question to answer value
 type AnswerDependencies map[QuestionSfid]AnswerValueSfid
 
-type QuestionDependencies struct {
+type questionDependencies struct {
 	DisablingAnswerValues AnswerDependencies
 	EnablingAnswerValues  AnswerDependencies
-	EnablingQuestions     []QuestionSfid
+	EnablingQuestions     map[QuestionSfid]struct{}
 }
 
-type GoalQuestionContingencies struct {
+type goalQuestionContingencies struct {
 	disablingAnswerValues AnswerDependencies
 	enablingAnswerValues  AnswerDependencies
 }
 
-type AnswerValueType int
+type answerValueType int
 
 const (
-	AnswerValueEnables AnswerValueType = iota
-	AnswerValueDisables
+	answerValueEnables answerValueType = iota
+	answerValueDisables
 )
 
-func FromGoal(
+//ErrCircularContingencies when there is circular contingencies
+var ErrCircularContingencies = errors.New("circular contingencies")
+
+func addDescendantContingencies(
+	q QuestionSfid,
+	result *questionDependencies,
+	deps map[QuestionSfid]questionDependencies,
+) error {
+	questionDeps, ok := deps[q]
+	if !ok {
+		return nil
+	}
+	for disablingQuestion, disablingAnswerValue := range questionDeps.DisablingAnswerValues {
+		_, alreadyHasDep := result.DisablingAnswerValues[disablingQuestion]
+
+		if alreadyHasDep {
+			return errors.Wrapf(ErrCircularContingencies, string(q))
+		}
+
+		result.DisablingAnswerValues[disablingQuestion] = disablingAnswerValue
+
+		err := addDescendantContingencies(disablingQuestion, result, deps)
+		if err != nil {
+			return err
+		}
+	}
+
+	for enablingQuestion, enablingAnswerValue := range questionDeps.EnablingAnswerValues {
+		_, alreadyHasDep := result.EnablingAnswerValues[enablingQuestion]
+
+		if alreadyHasDep {
+			return errors.Wrapf(ErrCircularContingencies, string(q))
+		}
+
+		result.EnablingAnswerValues[enablingQuestion] = enablingAnswerValue
+
+		err := addDescendantContingencies(enablingQuestion, result, deps)
+		if err != nil {
+			return err
+		}
+	}
+
+	for enablingQuestion := range questionDeps.EnablingQuestions {
+		_, alreadyHasDep := result.EnablingQuestions[enablingQuestion]
+		if alreadyHasDep {
+			return errors.Wrapf(ErrCircularContingencies, string(q))
+		}
+
+		result.EnablingQuestions[enablingQuestion] = struct{}{}
+
+		err := addDescendantContingencies(enablingQuestion, result, deps)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func expand(
+	contingencies map[QuestionSfid]questionDependencies,
+) (map[QuestionSfid]questionDependencies, error) {
+
+	result := map[QuestionSfid]questionDependencies{}
+	for q := range contingencies {
+		questionDeps := questionDependencies{
+			DisablingAnswerValues: AnswerDependencies{},
+			EnablingAnswerValues:  AnswerDependencies{},
+			EnablingQuestions:     map[QuestionSfid]struct{}{},
+		}
+		err := addDescendantContingencies(q, &questionDeps, contingencies)
+		if err != nil {
+			return map[QuestionSfid]questionDependencies{}, err
+		}
+		result[q] = questionDeps
+	}
+
+	return result, nil
+}
+
+func fromGoal(
 	masterQuestion *QuestionSfid,
 	answerValue *AnswerValueSfid,
 	goalQuestions []QuestionSfid,
-	disabledByAnswerValue AnswerValueType,
-) map[QuestionSfid]QuestionDependencies {
+	disabledByAnswerValue answerValueType,
+) map[QuestionSfid]questionDependencies {
 
-	result := map[QuestionSfid]QuestionDependencies{}
+	result := map[QuestionSfid]questionDependencies{}
 
 	for _, q := range goalQuestions {
-		questionDeps := QuestionDependencies{
+		questionDeps := questionDependencies{
 			DisablingAnswerValues: AnswerDependencies{},
 			EnablingAnswerValues:  AnswerDependencies{},
-			EnablingQuestions:     []QuestionSfid{},
+			EnablingQuestions:     map[QuestionSfid]struct{}{},
 		}
-		if disabledByAnswerValue == AnswerValueDisables && masterQuestion != nil {
+		if disabledByAnswerValue == answerValueDisables && masterQuestion != nil {
 			questionDeps.DisablingAnswerValues[*masterQuestion] = *answerValue
 		}
 
-		if disabledByAnswerValue == AnswerValueEnables && masterQuestion != nil {
+		if disabledByAnswerValue == answerValueEnables && masterQuestion != nil {
 			questionDeps.EnablingAnswerValues[*masterQuestion] = *answerValue
 		}
 		result[q] = questionDeps
@@ -69,7 +151,7 @@ func Enable(
 	responses Responses,
 	disablingAnswerValues AnswerDependencies,
 	enablingAnswerValues AnswerDependencies,
-	enablingQuestions []QuestionSfid) bool {
+	enablingQuestions map[QuestionSfid]struct{}) bool {
 
 	return enabledByAnswerValue(responses, enablingAnswerValues) &&
 		enabledByQuestionValuePercentage(responses, enablingQuestions) &&
@@ -113,13 +195,13 @@ func enabledByAnswerValue(
 
 func enabledByQuestionValuePercentage(
 	responses map[QuestionSfid]Response,
-	enablingQuestions []QuestionSfid) bool {
+	enablingQuestions map[QuestionSfid]struct{}) bool {
 
 	if len(enablingQuestions) == 0 {
 		return true
 	}
 
-	for _, enablingQuestion := range enablingQuestions {
+	for enablingQuestion := range enablingQuestions {
 		if response, hasEnablingResponse := responses[enablingQuestion]; hasEnablingResponse {
 			if response.ValuePercentage >= 100 {
 				return true
