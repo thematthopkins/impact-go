@@ -1,6 +1,6 @@
 package calculated
 
-import "errors"
+import "github.com/pkg/errors"
 
 type QuestionSfid string
 
@@ -29,6 +29,7 @@ const (
 )
 
 var MissingOperand = errors.New("missing operand")
+var RecursiveFormula = errors.New("recursive formula question")
 
 func evaluate(
 	expandedExpression ExpandedExpression,
@@ -85,18 +86,57 @@ func evaluate(
 
 func expand(
 	list map[QuestionSfid]Expression,
-) map[QuestionSfid]ExpandedExpression {
+) (map[QuestionSfid]ExpandedExpression, error) {
 
 	result := map[QuestionSfid]ExpandedExpression{}
-	for question, expression := range list {
-		o1 := expression.operand1
-		o2 := expression.operand2
-		result[question] = ExpandedExpression{
-			operator:         expression.operator,
-			questionOperand1: &o1,
-			questionOperand2: &o2,
+	for question := range list {
+		expandResult, err := expandOperand(question, list, map[QuestionSfid]struct{}{})
+		if err != nil {
+			return map[QuestionSfid]ExpandedExpression{}, err
 		}
+		result[question] = *expandResult
 	}
 
-	return result
+	return result, nil
+}
+
+func expandOperand(
+	id QuestionSfid,
+	list map[QuestionSfid]Expression,
+	visited map[QuestionSfid]struct{},
+) (*ExpandedExpression, error) {
+
+	found, exists := list[id]
+	if !exists {
+		return nil, nil
+	}
+
+	_, alreadyVisited := visited[id]
+	if alreadyVisited {
+		return nil, errors.Wrapf(RecursiveFormula, string(id))
+	}
+
+	var err error
+	visited[id] = struct{}{}
+	result := ExpandedExpression{}
+	result.operator = found.operator
+	result.expressionOperand1, err = expandOperand(found.operand1, list, visited)
+	if err != nil {
+		return nil, err
+	}
+
+	if result.expressionOperand1 == nil {
+		result.questionOperand1 = &found.operand1
+	}
+
+	result.expressionOperand2, err = expandOperand(found.operand2, list, visited)
+	if err != nil {
+		return nil, err
+	}
+
+	if result.expressionOperand2 == nil {
+		result.questionOperand2 = &found.operand2
+	}
+
+	return &result, nil
 }

@@ -171,17 +171,19 @@ func TestEvaluate_DescendantsBubbleUp(t *testing.T) {
 }
 
 func TestExpand_Empty(t *testing.T) {
-	result := expand(map[QuestionSfid]Expression{})
+	result, err := expand(map[QuestionSfid]Expression{})
+
+	assert.NoError(t, err)
 	assert.Equal(t, map[QuestionSfid]ExpandedExpression{}, result)
 }
 
-func TestExpand_T(t *testing.T) {
+func TestExpand(t *testing.T) {
 	q2 := QuestionSfid("Q2")
 	q3 := QuestionSfid("Q3")
 	q5 := QuestionSfid("Q5")
 	q6 := QuestionSfid("Q6")
 
-	result := expand(map[QuestionSfid]Expression{
+	result, err := expand(map[QuestionSfid]Expression{
 		"Q1": Expression{
 			operator: Add,
 			operand1: q2,
@@ -194,6 +196,7 @@ func TestExpand_T(t *testing.T) {
 		},
 	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, map[QuestionSfid]ExpandedExpression{
 		"Q1": ExpandedExpression{
 			operator:         Add,
@@ -206,4 +209,76 @@ func TestExpand_T(t *testing.T) {
 			questionOperand2: &q6,
 		},
 	}, result)
+}
+
+func TestExpand_Deep(t *testing.T) {
+	q1 := QuestionSfid("Q1")
+	q2 := QuestionSfid("Q2")
+	q3 := QuestionSfid("Q3")
+	q4 := QuestionSfid("Q4")
+
+	result, err := expand(map[QuestionSfid]Expression{
+		"Q3": Expression{
+			operator: Add,
+			operand1: q1,
+			operand2: q2,
+		},
+		"Q4": Expression{
+			operator: Add,
+			operand1: q2,
+			operand2: q1,
+		},
+		"Q6": Expression{
+			operator: Add,
+			operand1: q3,
+			operand2: q4,
+		},
+	})
+
+	qThreeExpanded := ExpandedExpression{
+		operator:         Add,
+		questionOperand1: &q1,
+		questionOperand2: &q2,
+	}
+
+	qFourExpanded := ExpandedExpression{
+		operator:         Add,
+		questionOperand1: &q2,
+		questionOperand2: &q1,
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, map[QuestionSfid]ExpandedExpression{
+		"Q3": qThreeExpanded,
+		"Q4": qFourExpanded,
+		"Q6": ExpandedExpression{
+			operator:           Add,
+			expressionOperand1: &qThreeExpanded,
+			expressionOperand2: &qFourExpanded,
+		},
+	}, result)
+}
+
+func TestExpanded_Infinite(t *testing.T) {
+	q1 := QuestionSfid("Q1")
+	q2 := QuestionSfid("Q2")
+	_, err := expand(map[QuestionSfid]Expression{
+		"Q1": Expression{
+			operator: Add,
+			operand1: q1,
+			operand2: q2,
+		},
+	})
+
+	assert.Error(t, err)
+
+	_, err = expand(map[QuestionSfid]Expression{
+		"Q1": Expression{
+			operator: Add,
+			operand1: q2,
+			operand2: q1,
+		},
+	})
+
+	assert.Error(t, err)
 }
