@@ -2,141 +2,132 @@ package calculated
 
 import "github.com/pkg/errors"
 
-type QuestionSfid string
+type QID string
 
-// Formula is a composition of two questions and how to compute them
-type Expression struct {
-	operator Operator
-	operand1 QuestionSfid
-	operand2 QuestionSfid
+type Expr interface {
+	isExpr()
 }
 
-type ExpandedExpression struct {
-	operator           Operator
-	expressionOperand1 *ExpandedExpression
-	questionOperand1   *QuestionSfid
-	expressionOperand2 *ExpandedExpression
-	questionOperand2   *QuestionSfid
+func (QID) isExpr()    {}
+func (OpExpr) isExpr() {}
+
+// OpDef is a composition of two questions and how to compute them
+type OpDef struct {
+	op    Op
+	left  QID
+	right QID
 }
 
-type Operator string
+type OpExpr struct {
+	op    Op
+	left  Expr
+	right Expr
+}
+
+type Op string
 
 const (
-	Add      Operator = "+"
-	Subtract          = "-"
-	Multiply          = "*"
-	Divide            = "/"
+	Add      Op = "+"
+	Subtract    = "-"
+	Multiply    = "*"
+	Divide      = "/"
 )
 
-var MissingOperand = errors.New("missing operand")
-var RecursiveFormula = errors.New("recursive formula question")
+var (
+	ErrOperandType      = errors.New("invalid operandType")
+	ErrRecursiveFormula = errors.New("recursive formula question")
+)
 
-func evaluate(
-	expandedExpression ExpandedExpression,
-	questions map[QuestionSfid]float64,
+func eval(
+	expression Expr,
+	questions map[QID]float64,
+) (float64, error) {
+	switch expression := expression.(type) {
+	case OpExpr:
+		return evalOp(expression, questions)
+	case QID:
+		return questions[expression], nil
+	default:
+		return 0, ErrOperandType
+	}
+}
+
+func evalOp(
+	op OpExpr,
+	questions map[QID]float64,
 ) (float64, error) {
 
-	if expandedExpression.expressionOperand1 == nil && expandedExpression.questionOperand1 == nil {
-		return 0, MissingOperand
+	leftVal, err := eval(op.left, questions)
+	if err != nil {
+		return 0, err
+	}
+	rightVal, err := eval(op.right, questions)
+	if err != nil {
+		return 0, err
 	}
 
-	if expandedExpression.expressionOperand2 == nil && expandedExpression.questionOperand2 == nil {
-		return 0, MissingOperand
-	}
-
-	operandOneValue := 0.0
-	if expandedExpression.expressionOperand1 != nil {
-		var err error
-		operandOneValue, err = evaluate(*expandedExpression.expressionOperand1, questions)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		operandOneValue, _ = questions[*expandedExpression.questionOperand1]
-	}
-
-	operandTwoValue := 0.0
-	if expandedExpression.expressionOperand2 != nil {
-		var err error
-		operandTwoValue, err = evaluate(*expandedExpression.expressionOperand2, questions)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		operandTwoValue, _ = questions[*expandedExpression.questionOperand2]
-	}
-
-	switch expandedExpression.operator {
+	switch op.op {
 	case Add:
-		return operandOneValue + operandTwoValue, nil
+		return leftVal + rightVal, nil
 	case Subtract:
-		return operandOneValue - operandTwoValue, nil
+		return leftVal - rightVal, nil
 	case Multiply:
-		return operandOneValue * operandTwoValue, nil
+		return leftVal * rightVal, nil
 	case Divide:
-		if operandTwoValue == 0.0 {
+		if rightVal == 0.0 {
 			return 0, nil
 		}
 
-		return operandOneValue / operandTwoValue, nil
+		return leftVal / rightVal, nil
 	default:
 		return 0, nil
 	}
 }
 
 func expand(
-	list map[QuestionSfid]Expression,
-) (map[QuestionSfid]ExpandedExpression, error) {
+	list map[QID]OpDef,
+) (map[QID]Expr, error) {
 
-	result := map[QuestionSfid]ExpandedExpression{}
+	result := map[QID]Expr{}
 	for question := range list {
-		expandResult, err := expandOperand(question, list, map[QuestionSfid]struct{}{})
+		expr, err := expandOpDef(question, list, map[QID]struct{}{})
 		if err != nil {
-			return map[QuestionSfid]ExpandedExpression{}, err
+			return map[QID]Expr{}, err
 		}
-		result[question] = *expandResult
+		result[question] = expr
 	}
 
 	return result, nil
 }
 
-func expandOperand(
-	id QuestionSfid,
-	list map[QuestionSfid]Expression,
-	visited map[QuestionSfid]struct{},
-) (*ExpandedExpression, error) {
+func expandOpDef(
+	id QID,
+	list map[QID]OpDef,
+	visited map[QID]struct{},
+) (Expr, error) {
 
 	found, exists := list[id]
 	if !exists {
-		return nil, nil
+		return id, nil
 	}
 
-	_, alreadyVisited := visited[id]
-	if alreadyVisited {
-		return nil, errors.Wrapf(RecursiveFormula, string(id))
+	if _, alreadyVisited := visited[id]; alreadyVisited {
+		return nil, errors.Wrapf(ErrRecursiveFormula, string(id))
 	}
 
 	var err error
 	visited[id] = struct{}{}
-	result := ExpandedExpression{}
-	result.operator = found.operator
-	result.expressionOperand1, err = expandOperand(found.operand1, list, visited)
+	result := OpExpr{}
+	result.op = found.op
+	result.left, err = expandOpDef(found.left, list, visited)
 	if err != nil {
 		return nil, err
 	}
 
-	if result.expressionOperand1 == nil {
-		result.questionOperand1 = &found.operand1
-	}
-
-	result.expressionOperand2, err = expandOperand(found.operand2, list, visited)
+	result.right, err = expandOpDef(found.right, list, visited)
 	if err != nil {
 		return nil, err
 	}
 
-	if result.expressionOperand2 == nil {
-		result.questionOperand2 = &found.operand2
-	}
-
-	return &result, nil
+	return result, nil
 }

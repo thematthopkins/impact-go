@@ -31,7 +31,7 @@ func addAccessToken(db *sql.DB, userID auth.UserID, expiration time.Time) (auth.
 func TestInvalidClientName(t *testing.T) {
 	db := testdb.Setup()
 	_, err := auth.AddSession(db, "invalidClientID", 1234)
-	assert.Error(t, err, "failed to find oauth client: invalidClientID");	
+	assert.Error(t, err, "failed to find oauth client: invalidClientID")
 }
 
 func TestValid(t *testing.T) {

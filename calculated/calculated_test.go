@@ -6,277 +6,211 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEvaluate(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	expanded := ExpandedExpression{
-		questionOperand1: &q1,
-		questionOperand2: &q2,
+func TestEval(t *testing.T) {
+	expanded := OpExpr{
+		left:  QID("Q1"),
+		right: QID("Q2"),
 	}
 
-	assessment := map[QuestionSfid]float64{
+	assessment := map[QID]float64{
 		"Q1": 5.0,
 		"Q2": 2.5,
 	}
 
-	expanded.operator = Add
-	addResult, addErr := evaluate(expanded, assessment)
+	expanded.op = Add
+	addResult, addErr := eval(expanded, assessment)
 	assert.NoError(t, addErr)
 	assert.Equal(t, 7.5, addResult)
 
-	expanded.operator = Subtract
-	subtractResult, subtractErr := evaluate(expanded, assessment)
+	expanded.op = Subtract
+	subtractResult, subtractErr := eval(expanded, assessment)
 	assert.NoError(t, subtractErr)
 	assert.Equal(t, 2.5, subtractResult)
 
-	expanded.operator = Multiply
-	multiplyResult, multiplyErr := evaluate(expanded, assessment)
+	expanded.op = Multiply
+	multiplyResult, multiplyErr := eval(expanded, assessment)
 	assert.NoError(t, multiplyErr)
 	assert.Equal(t, 12.5, multiplyResult)
 
-	expanded.operator = Divide
-	divideResult, divideErr := evaluate(expanded, assessment)
+	expanded.op = Divide
+	divideResult, divideErr := eval(expanded, assessment)
 	assert.NoError(t, divideErr)
 	assert.Equal(t, 2.0, divideResult)
 
-	expanded.operator = "!"
-	unknownResult, unknownErr := evaluate(expanded, assessment)
+	expanded.op = "!"
+	unknownResult, unknownErr := eval(expanded, assessment)
 	assert.NoError(t, unknownErr)
 	assert.Equal(t, 0.0, unknownResult)
 }
 
-func TestEvaluate_DivideByZero(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	expanded := ExpandedExpression{
-		questionOperand1: &q1,
-		questionOperand2: &q2,
-	}
-
-	assessment := map[QuestionSfid]float64{
+func TestEval_DivideByZero(t *testing.T) {
+	divideResult, divideErr := eval(OpExpr{
+		op:    Divide,
+		left:  QID("Q1"),
+		right: QID("Q2"),
+	}, map[QID]float64{
 		"Q1": 5.0,
 		"Q2": 0,
-	}
-
-	expanded.operator = Divide
-	divideResult, divideErr := evaluate(expanded, assessment)
+	})
 	assert.NoError(t, divideErr)
 	assert.Equal(t, 0.0, divideResult)
 }
 
-func TestEvaluate_Descendants(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	q3 := QuestionSfid("Q3")
-	expandedFirst := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q1,
-		questionOperand2: &q2,
-	}
-
-	expandedSecond := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q2,
-		questionOperand2: &q3,
-	}
-
-	expanded := ExpandedExpression{
-		operator:           Add,
-		expressionOperand1: &expandedFirst,
-		expressionOperand2: &expandedSecond,
-	}
-
-	assessment := map[QuestionSfid]float64{
+func TestEval_Descendants(t *testing.T) {
+	result, err := eval(OpExpr{
+		op: Add,
+		left: OpExpr{
+			op:    Add,
+			left:  QID("Q1"),
+			right: QID("Q2"),
+		},
+		right: OpExpr{
+			op:    Add,
+			left:  QID("Q2"),
+			right: QID("Q3"),
+		},
+	}, map[QID]float64{
 		"Q1": 5.0,
 		"Q2": 2.5,
 		"Q3": 7.25,
-	}
-
-	result, err := evaluate(expanded, assessment)
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 17.25, result)
 }
 
-func TestEvaluate_DescendentsMissing(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	expanded := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q1,
-		questionOperand2: &q2,
-	}
-
-	assessment := map[QuestionSfid]float64{
+func TestEval_DescendentsMissing(t *testing.T) {
+	result, err := eval(OpExpr{
+		op:    Add,
+		left:  QID("Q1"),
+		right: QID("Q2"),
+	}, map[QID]float64{
 		"Q2": 5.3,
-	}
-
-	result, err := evaluate(expanded, assessment)
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 5.3, result)
 }
 
-func TestEvaluate_DescendentsMissingOperand(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	expanded := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q1,
-		questionOperand2: nil,
-	}
-
-	assessment := map[QuestionSfid]float64{
+func TestEval_InvalidLeft(t *testing.T) {
+	_, err := eval(OpExpr{
+		op:    Add,
+		left:  QID("Q1"),
+		right: nil,
+	}, map[QID]float64{
 		"Q1": 2.5,
-	}
-
-	_, err := evaluate(expanded, assessment)
-	assert.Error(t, err)
-
-	expanded.questionOperand1 = nil
-	expanded.questionOperand2 = &q1
-	_, err = evaluate(expanded, assessment)
+	})
 	assert.Error(t, err)
 }
 
-func TestEvaluate_DescendantsBubbleUp(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	expandedFirst := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q1,
-		questionOperand2: &q2,
-	}
-
-	expandedSecond := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q2,
-		questionOperand2: nil,
-	}
-
-	expanded := ExpandedExpression{
-		operator:           Add,
-		expressionOperand1: &expandedFirst,
-		expressionOperand2: &expandedSecond,
-	}
-
-	assessment := map[QuestionSfid]float64{
-		"Q1": 5.0,
-		"Q2": 2.5,
-	}
-
-	_, err := evaluate(expanded, assessment)
-	assert.Error(t, err)
-
-	expandedFirst.questionOperand1 = nil
-	_, err = evaluate(expanded, assessment)
+func TestEval_InvalidRight(t *testing.T) {
+	_, err := eval(OpExpr{
+		op:    Add,
+		left:  nil,
+		right: QID("Q1"),
+	}, map[QID]float64{
+		"Q1": 2.5,
+	})
 	assert.Error(t, err)
 }
 
 func TestExpand_Empty(t *testing.T) {
-	result, err := expand(map[QuestionSfid]Expression{})
+	result, err := expand(map[QID]OpDef{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, map[QuestionSfid]ExpandedExpression{}, result)
+	assert.Equal(t, map[QID]Expr{}, result)
 }
 
 func TestExpand(t *testing.T) {
-	q2 := QuestionSfid("Q2")
-	q3 := QuestionSfid("Q3")
-	q5 := QuestionSfid("Q5")
-	q6 := QuestionSfid("Q6")
-
-	result, err := expand(map[QuestionSfid]Expression{
-		"Q1": Expression{
-			operator: Add,
-			operand1: q2,
-			operand2: q3,
+	result, err := expand(map[QID]OpDef{
+		"Q1": OpDef{
+			op:    Add,
+			left:  "Q2",
+			right: "Q3",
 		},
-		"Q4": Expression{
-			operator: Add,
-			operand1: q5,
-			operand2: q6,
+		"Q4": OpDef{
+			op:    Add,
+			left:  "Q5",
+			right: "Q6",
 		},
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, map[QuestionSfid]ExpandedExpression{
-		"Q1": ExpandedExpression{
-			operator:         Add,
-			questionOperand1: &q2,
-			questionOperand2: &q3,
+	assert.Equal(t, map[QID]Expr{
+		"Q1": OpExpr{
+			op:    Add,
+			left:  QID("Q2"),
+			right: QID("Q3"),
 		},
-		"Q4": ExpandedExpression{
-			operator:         Add,
-			questionOperand1: &q5,
-			questionOperand2: &q6,
+		"Q4": OpExpr{
+			op:    Add,
+			left:  QID("Q5"),
+			right: QID("Q6"),
 		},
 	}, result)
 }
 
 func TestExpand_Deep(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	q3 := QuestionSfid("Q3")
-	q4 := QuestionSfid("Q4")
-
-	result, err := expand(map[QuestionSfid]Expression{
-		"Q3": Expression{
-			operator: Add,
-			operand1: q1,
-			operand2: q2,
+	result, err := expand(map[QID]OpDef{
+		"Q3": OpDef{
+			op:    Add,
+			left:  "Q1",
+			right: "Q2",
 		},
-		"Q4": Expression{
-			operator: Add,
-			operand1: q2,
-			operand2: q1,
+		"Q4": OpDef{
+			op:    Add,
+			left:  "Q2",
+			right: "Q1",
 		},
-		"Q6": Expression{
-			operator: Add,
-			operand1: q3,
-			operand2: q4,
+		"Q6": OpDef{
+			op:    Add,
+			left:  "Q3",
+			right: "Q4",
 		},
 	})
 
-	qThreeExpanded := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q1,
-		questionOperand2: &q2,
-	}
-
-	qFourExpanded := ExpandedExpression{
-		operator:         Add,
-		questionOperand1: &q2,
-		questionOperand2: &q1,
-	}
-
 	assert.NoError(t, err)
-	assert.Equal(t, map[QuestionSfid]ExpandedExpression{
-		"Q3": qThreeExpanded,
-		"Q4": qFourExpanded,
-		"Q6": ExpandedExpression{
-			operator:           Add,
-			expressionOperand1: &qThreeExpanded,
-			expressionOperand2: &qFourExpanded,
+	assert.Equal(t, map[QID]Expr{
+		"Q3": OpExpr{
+			op:    Add,
+			left:  QID("Q1"),
+			right: QID("Q2"),
+		},
+		"Q4": OpExpr{
+			op:    Add,
+			left:  QID("Q2"),
+			right: QID("Q1"),
+		},
+		"Q6": OpExpr{
+			op: Add,
+			left: OpExpr{
+				op:    Add,
+				left:  QID("Q1"),
+				right: QID("Q2"),
+			},
+			right: OpExpr{
+				op:    Add,
+				left:  QID("Q2"),
+				right: QID("Q1"),
+			},
 		},
 	}, result)
 }
 
 func TestExpanded_Infinite(t *testing.T) {
-	q1 := QuestionSfid("Q1")
-	q2 := QuestionSfid("Q2")
-	_, err := expand(map[QuestionSfid]Expression{
-		"Q1": Expression{
-			operator: Add,
-			operand1: q1,
-			operand2: q2,
+	_, err := expand(map[QID]OpDef{
+		"Q1": OpDef{
+			op:    Add,
+			left:  "Q1",
+			right: "Q2",
 		},
 	})
 
 	assert.Error(t, err)
 
-	_, err = expand(map[QuestionSfid]Expression{
-		"Q1": Expression{
-			operator: Add,
-			operand1: q2,
-			operand2: q1,
+	_, err = expand(map[QID]OpDef{
+		"Q1": OpDef{
+			op:    Add,
+			left:  QID("Q2"),
+			right: QID("Q1"),
 		},
 	})
 

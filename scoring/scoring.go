@@ -21,6 +21,7 @@ type Standard struct {
 	Worth         float64
 }
 
+// ScoreType scores
 type ScoreType string
 
 const (
